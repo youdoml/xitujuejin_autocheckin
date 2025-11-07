@@ -68,13 +68,25 @@ class JuejinCheckin:
                 await checkin_button.click()
                 logger.info("点击签到按钮成功")
                 # 点击立即签到
+                
+                logger.info("等待页面加载")
                 await page.wait_for_load_state('networkidle')
+                await page.wait_for_timeout(5000)
+
                 immediate_checkin_button = page.get_by_role("button", name="立即签到")
                 if await immediate_checkin_button.is_visible():
                     await immediate_checkin_button.click()
                     await page.wait_for_load_state('networkidle')
-                    logger.info("签到成功")
+                    await page.wait_for_timeout(5000)
+                    # logger.info("签到成功")
                     # 保存签到后的cookies
+
+                    is_checked_in = page.get_by_role("button", name="已签到")
+                    if await is_checked_in.is_visible():
+                        logger.info("已签到")
+                    else:
+                        logger.info("签到失败")
+
                     return True
                 else:
                     logger.info("可能已经签到过了")
