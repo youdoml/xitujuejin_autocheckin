@@ -5,9 +5,11 @@ import schedule
 import time
 from datetime import datetime
 import logging
+import os
 
+filename =os.path.join(os.path.dirname(__file__), "juejin_cookies.log")
 # 设置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename=filename, encoding='utf-8')
 logger = logging.getLogger(__name__)
 
 class JuejinCheckin:
@@ -46,7 +48,7 @@ class JuejinCheckin:
         logger.info("请在浏览器中手动登录稀土掘金...")
         await page.goto("https://juejin.cn/")
         # 等待用户登录
-        await page.wait_for_timeout(60000)  # 等待60秒用于登录
+        await page.wait_for_timeout(120000)  # 等待60秒用于登录
         await self.save_cookies(context)
         
     async def checkin(self, page):
@@ -54,7 +56,8 @@ class JuejinCheckin:
         try:
             # 访问掘金主页
             await page.goto("https://juejin.cn/")
-            await page.wait_for_load_state('networkidle')
+            # await page.wait_for_load_state('networkidle')
+            await page.wait_for_timeout(10000)
             # 检查是否已登录
             login_button = page.locator(".login-button:first-child")
             if await login_button.is_visible():
@@ -112,15 +115,21 @@ class JuejinCheckin:
             
             if not cookies_loaded:
                 # 如果没有cookies，则需要手动登录
+                logger.info('没有加载到cookie')
                 await self.login_manually(page, context)
             
             # 执行签到
             success = await self.checkin(page)
             
-            if success:
-                logger.info("今日签到已完成")
-            else:
-                logger.error("签到失败")
+            for i in range(5):
+                if not success:
+                    logger.error(f"签到失败{i}")
+                    await asyncio.sleep(10 + i * 10 * 60)
+                    success = await self.checkin(page)
+                else:
+                    logger.info("今日签到已完成")
+                    break
+                
                 
             await self.save_cookies(context)
             
@@ -135,14 +144,18 @@ def job():
 
 if __name__ == "__main__":
     # 立即执行一次签到
-    job()
+    # job()
     
-    # 设置每日定时任务
-    schedule.every().day.at("09:00").do(job)
+    # # 设置每日定时任务
+    # schedule.every().day.at("09:00").do(job)
     
-    logger.info("稀土掘金签到服务已启动，将在每天09:00自动签到")
+    # logger.info("稀土掘金签到服务已启动，将在每天09:00自动签到")
     
-    # 保持程序运行
-    while True:
-        schedule.run_pending()
-        time.sleep(60)
+    # # 保持程序运行
+    # while True:
+    #     schedule.run_pending()
+    #     time.sleep(60)
+    cookies_file = os.path.join(os.path.dirname(__file__), "juejin_cookies.json")
+    logger.info('加载cookies file' + cookies_file)
+    checkin =JuejinCheckin(cookies_file=cookies_file)
+    asyncio.run(checkin.run_checkin())
