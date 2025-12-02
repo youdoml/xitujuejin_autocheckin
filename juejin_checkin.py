@@ -9,7 +9,7 @@ import os
 
 filename =os.path.join(os.path.dirname(__file__), "juejin_cookies.log")
 # 设置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename=filename, encoding='utf-8')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', encoding='utf-8')
 logger = logging.getLogger(__name__)
 
 class JuejinCheckin:
@@ -57,45 +57,34 @@ class JuejinCheckin:
             # 访问掘金主页
             await page.goto("https://juejin.cn/")
             # await page.wait_for_load_state('networkidle')
-            await page.wait_for_timeout(10000)
+            await page.wait_for_timeout(5000)
             # 检查是否已登录
             login_button = page.locator(".login-button:first-child")
             if await login_button.is_visible():
                 logger.error("未登录，请先登录")
                 return False
                 
+            await page.goto("https://juejin.cn/user/center/signin?from=main_page")
+            await page.wait_for_timeout(5000)
             # 点击签到按钮
-            checkin_button = page.get_by_role("button", name="签到")
 
-            if await checkin_button.is_visible():
-                await checkin_button.click()
-                logger.info("点击签到按钮成功")
-                # 点击立即签到
-                
-                logger.info("等待页面加载")
+            immediate_checkin_button = page.get_by_role("button", name="立即签到")
+            if await immediate_checkin_button.is_visible():
+                await immediate_checkin_button.click()
                 await page.wait_for_load_state('networkidle')
                 await page.wait_for_timeout(5000)
+                # logger.info("签到成功")
+                # 保存签到后的cookies
 
-                immediate_checkin_button = page.get_by_role("button", name="立即签到")
-                if await immediate_checkin_button.is_visible():
-                    await immediate_checkin_button.click()
-                    await page.wait_for_load_state('networkidle')
-                    await page.wait_for_timeout(5000)
-                    # logger.info("签到成功")
-                    # 保存签到后的cookies
-
-                    is_checked_in = page.get_by_role("button", name="已签到")
-                    if await is_checked_in.is_visible():
-                        logger.info("已签到")
-                    else:
-                        logger.info("签到失败")
-
-                    return True
+                is_checked_in = page.get_by_role("button", name="已签到")
+                if await is_checked_in.is_visible():
+                    logger.info("已签到")
                 else:
-                    logger.info("可能已经签到过了")
-                    return True
+                    logger.info("签到失败")
+
+                return True
             else:
-                logger.info("签到按钮不可见，可能已经签到过了")
+                logger.info("可能已经签到过了")
                 return True
                 
         except Exception as e:
@@ -144,18 +133,18 @@ def job():
 
 if __name__ == "__main__":
     # 立即执行一次签到
-    # job()
+    job()
     
-    # # 设置每日定时任务
-    # schedule.every().day.at("09:00").do(job)
+    # 设置每日定时任务
+    schedule.every().day.at("09:00").do(job)
     
-    # logger.info("稀土掘金签到服务已启动，将在每天09:00自动签到")
+    logger.info("稀土掘金签到服务已启动，将在每天09:00自动签到")
     
-    # # 保持程序运行
-    # while True:
-    #     schedule.run_pending()
-    #     time.sleep(60)
-    cookies_file = os.path.join(os.path.dirname(__file__), "juejin_cookies.json")
-    logger.info('加载cookies file' + cookies_file)
-    checkin =JuejinCheckin(cookies_file=cookies_file)
-    asyncio.run(checkin.run_checkin())
+    # 保持程序运行
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
+    # cookies_file = os.path.join(os.path.dirname(__file__), "juejin_cookies.json")
+    # logger.info('加载cookies file' + cookies_file)
+    # checkin =JuejinCheckin(cookies_file=cookies_file)
+    # asyncio.run(checkin.run_checkin())
